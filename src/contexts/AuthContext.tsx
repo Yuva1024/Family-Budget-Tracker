@@ -119,7 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(s?.user ?? null);
 
             if (s?.user) {
-                setProfileLoading(true);
+                if (event === 'SIGNED_IN') {
+                    setProfileLoading(true);
+                }
                 const p = await fetchProfile(s.user.id);
                 setProfile(p);
                 if (p?.family_id) fetchInviteCode(p.family_id);

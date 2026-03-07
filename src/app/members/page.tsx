@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useFamily } from '@/contexts/FamilyContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { copyToClipboard } from '@/lib/utils/clipboard';
 import GlassCard from '@/components/ui/GlassCard';
 import Badge from '@/components/ui/Badge';
 import Avatar from '@/components/ui/Avatar';
@@ -17,11 +18,13 @@ export default function MembersPage() {
 
     const inviteCode = familyInviteCode || 'Loading...';
 
-    const handleCopy = () => {
+    const handleCopy = async () => {
         if (!familyInviteCode) return;
-        navigator.clipboard.writeText(familyInviteCode);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        const success = await copyToClipboard(familyInviteCode);
+        if (success) {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
     };
 
     return (

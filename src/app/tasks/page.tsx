@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Avatar from '@/components/ui/Avatar';
 import Modal from '@/components/ui/Modal';
-import { Plus, Search, Clock, AlertTriangle, CheckCircle, ChevronDown } from 'lucide-react';
+import { Plus, Search, Clock, AlertTriangle, CheckCircle, ChevronDown, Edit2, Trash2 } from 'lucide-react';
 import { format, isBefore, addHours } from 'date-fns';
 
 type Tab = 'pending' | 'in-progress' | 'completed';
@@ -20,12 +20,14 @@ const tabColors: Record<Tab, string> = {
 };
 
 export default function TasksPage() {
-    const { tasks, members, user, addTask, updateTaskStatus, getUserById } = useFamily();
+    const { tasks, members, user, addTask, updateTaskStatus, updateTask, deleteTask, getUserById } = useFamily();
 
     const [tab, setTab] = useState<Tab>('pending');
     const [search, setSearch] = useState('');
     const [filterPriority, setFilterPriority] = useState<string>('all');
     const [showModal, setShowModal] = useState(false);
+    const [editMode, setEditMode] = useState(false);
+    const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
     // New task form
     const [newTitle, setNewTitle] = useState('');
@@ -45,18 +47,47 @@ export default function TasksPage() {
             });
     }, [tasks, tab, search, filterPriority]);
 
-    const handleAddTask = () => {
+    const handleSubmitTask = () => {
         if (!newTitle.trim()) return;
-        addTask({
-            title: newTitle.trim(),
-            description: newDesc.trim(),
-            priority: newPriority,
-            deadline: newDeadline || new Date(Date.now() + 86400000 * 3).toISOString(),
-            assigned_to: newAssigned.length ? newAssigned : [user.id],
-            created_by: user.id,
-            status: 'pending',
-        });
+
+        if (editMode && editingTaskId) {
+            updateTask(editingTaskId, {
+                title: newTitle.trim(),
+                description: newDesc.trim(),
+                priority: newPriority,
+                deadline: newDeadline || new Date(Date.now() + 86400000 * 3).toISOString(),
+                assigned_to: newAssigned.length ? newAssigned : [user.id],
+            });
+        } else {
+            addTask({
+                title: newTitle.trim(),
+                description: newDesc.trim(),
+                priority: newPriority,
+                deadline: newDeadline || new Date(Date.now() + 86400000 * 3).toISOString(),
+                assigned_to: newAssigned.length ? newAssigned : [user.id],
+                created_by: user.id,
+                status: 'pending',
+            });
+        }
+
+        handleCloseModal();
+    };
+
+    const handleEditTaskClick = (task: any) => {
+        setEditMode(true);
+        setEditingTaskId(task.id);
+        setNewTitle(task.title);
+        setNewDesc(task.description || '');
+        setNewPriority(task.priority);
+        setNewDeadline(task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : '');
+        setNewAssigned(task.assigned_to || []);
+        setShowModal(true);
+    };
+
+    const handleCloseModal = () => {
         setShowModal(false);
+        setEditMode(false);
+        setEditingTaskId(null);
         setNewTitle('');
         setNewDesc('');
         setNewPriority('medium');
@@ -71,7 +102,7 @@ export default function TasksPage() {
         <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h1 className="text-2xl lg:text-3xl font-bold">Tasks</h1>
-                <Button onClick={() => setShowModal(true)} size="md">
+                <Button onClick={() => { handleCloseModal(); setShowModal(true); }} size="md">
                     <Plus size={16} /> New Task
                 </Button>
             </div>
@@ -140,7 +171,7 @@ export default function TasksPage() {
                             >
                                 <GlassCard
                                     hover
-                                    className={`relative ${isUrgent ? 'border-l-2 border-l-[var(--color-accent-red)]' : ''}`}
+                                    className={`relative group ${isUrgent ? 'border-l-2 border-l-[var(--color-accent-red)]' : ''}`}
                                 >
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                                         <div className="flex-1 min-w-0">
@@ -178,6 +209,19 @@ export default function TasksPage() {
                                                     return m ? <Avatar key={uid} name={m.name} size={24} className="ring-2 ring-[var(--color-card)]" /> : null;
                                                 })}
                                             </div>
+
+                                            {/* Edit & Delete Actions */}
+                                            {user.id === task.created_by && (
+                                                <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => handleEditTaskClick(task)} className="p-1.5 text-[var(--color-muted)] hover:text-[#00c2ff] transition-colors rounded-lg hover:bg-white/[0.05]">
+                                                        <Edit2 size={14} />
+                                                    </button>
+                                                    <button onClick={() => deleteTask(task.id)} className="p-1.5 text-[var(--color-muted)] hover:text-[#ff4e4e] transition-colors rounded-lg hover:bg-white/[0.05]">
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            )}
+
                                             {/* Status actions */}
                                             {task.status === 'pending' && (
                                                 <Button size="sm" variant="ghost" onClick={() => updateTaskStatus(task.id, 'in-progress')}>
@@ -204,7 +248,7 @@ export default function TasksPage() {
             </div>
 
             {/* ── New Task Modal ── */}
-            <Modal open={showModal} onClose={() => setShowModal(false)} title="Create New Task">
+            <Modal open={showModal} onClose={handleCloseModal} title={editMode ? "Edit Task" : "Create New Task"}>
                 <div className="space-y-4">
                     <div>
                         <label className="text-xs text-[var(--color-muted)] font-medium mb-1 block">Title *</label>
@@ -238,8 +282,8 @@ export default function TasksPage() {
                                         setNewAssigned((p) => (p.includes(m.id) ? p.filter((x) => x !== m.id) : [...p, m.id]))
                                     }
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${newAssigned.includes(m.id)
-                                            ? 'border-[var(--color-accent-cyan)] bg-[var(--color-accent-cyan)]/10 text-[var(--color-accent-cyan)]'
-                                            : 'border-[var(--color-border)] text-[var(--color-muted)] hover:bg-white/[0.03]'
+                                        ? 'border-[var(--color-accent-cyan)] bg-[var(--color-accent-cyan)]/10 text-[var(--color-accent-cyan)]'
+                                        : 'border-[var(--color-border)] text-[var(--color-muted)] hover:bg-white/[0.03]'
                                         }`}
                                 >
                                     <Avatar name={m.name} size={18} />
@@ -249,8 +293,8 @@ export default function TasksPage() {
                         </div>
                     </div>
                     <div className="flex justify-end gap-3 pt-2">
-                        <Button variant="ghost" onClick={() => setShowModal(false)}>Cancel</Button>
-                        <Button onClick={handleAddTask} disabled={!newTitle.trim()}>Create Task</Button>
+                        <Button variant="ghost" onClick={handleCloseModal}>Cancel</Button>
+                        <Button onClick={handleSubmitTask} disabled={!newTitle.trim()}>{editMode ? 'Save Changes' : 'Create Task'}</Button>
                     </div>
                 </div>
             </Modal>

@@ -4,6 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useFamily } from '@/contexts/FamilyContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { copyToClipboard } from '@/lib/utils/clipboard';
 import GlassCard from '@/components/ui/GlassCard';
 import Avatar from '@/components/ui/Avatar';
 import Badge from '@/components/ui/Badge';
@@ -16,6 +18,9 @@ import {
   TrendingUp,
   AlertTriangle,
   ArrowRight,
+  Users,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { format, isBefore, addHours } from 'date-fns';
 
@@ -25,7 +30,19 @@ const fadeUp = {
 };
 
 export default function DashboardPage() {
-  const { user, tasks, groceryItems, expenses, getUserById } = useFamily();
+  const { user, tasks, groceryItems, expenses, members, getUserById } = useFamily();
+  const { familyInviteCode } = useAuth();
+
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = async () => {
+    if (!familyInviteCode) return;
+    const success = await copyToClipboard(familyInviteCode);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const pendingTasks = tasks.filter((t) => t.status !== 'completed');
   const completedToday = tasks.filter(
@@ -187,6 +204,57 @@ export default function DashboardPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Bottom Section — Members (Mobile Friendly) */}
+      <motion.div custom={7} variants={fadeUp} initial="hidden" animate="show" className="mb-8">
+        <GlassCard className="relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-[var(--color-accent-blue)]/5 rounded-full blur-3xl translate-x-12 -translate-y-12" />
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+
+            {/* Members List */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold flex items-center gap-2">
+                  <Users size={16} className="text-[var(--color-accent-blue)]" /> Family Members
+                </h2>
+                <Link href="/members" className="text-xs text-[var(--color-accent-cyan)] hover:underline flex items-center gap-1">
+                  View all <ArrowRight size={12} />
+                </Link>
+              </div>
+              <div className="flex -space-x-3 overflow-x-auto pb-2">
+                {members.slice(0, 6).map((member) => (
+                  <div key={member.id} className="relative group">
+                    <Avatar name={member.name} size={40} className="ring-2 ring-[var(--color-card)] relative z-10 transition-transform group-hover:-translate-y-1" />
+                  </div>
+                ))}
+                {members.length > 6 && (
+                  <div className="w-10 h-10 rounded-full bg-white/[0.05] border-2 border-[var(--color-card)] flex items-center justify-center text-xs font-semibold relative z-10">
+                    +{members.length - 6}
+                  </div>
+                )}
+                {members.length === 0 && <p className="text-sm text-[var(--color-muted)]">No members found</p>}
+              </div>
+            </div>
+
+            {/* Invite Code */}
+            <div className="md:w-72 bg-white/[0.02] border border-[var(--color-border)] rounded-2xl p-4">
+              <h3 className="text-xs font-semibold text-[var(--color-muted)] mb-2 uppercase tracking-wider">Family Invite Code</h3>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-white/[0.04] rounded-lg px-3 py-2 text-sm font-mono tracking-wider text-[var(--color-accent-cyan)] select-all truncate">
+                  {familyInviteCode || 'Loading...'}
+                </div>
+                <button
+                  onClick={handleCopy}
+                  disabled={!familyInviteCode}
+                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-[var(--color-accent-cyan)]/10 text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/20 transition-colors disabled:opacity-50"
+                >
+                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
+            </div>
+          </div>
+        </GlassCard>
+      </motion.div>
 
     </div>
   );

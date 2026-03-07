@@ -31,6 +31,8 @@ interface FamilyContextValue {
     tasks: DemoTask[];
     addTask: (task: Omit<DemoTask, 'id' | 'created_at' | 'completed_at'>) => void;
     updateTaskStatus: (id: string, status: DemoTask['status']) => void;
+    updateTask: (id: string, updates: Partial<Omit<DemoTask, 'id' | 'created_at'>>) => void;
+    deleteTask: (id: string) => void;
     groceryItems: DemoGroceryItem[];
     addGroceryItem: (item: Omit<DemoGroceryItem, 'id' | 'created_at' | 'completed_at'>) => void;
     toggleGroceryItem: (id: string) => void;
@@ -341,6 +343,18 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
         }).eq('id', id);
     }, []);
 
+    const updateTask = useCallback(async (id: string, updates: Partial<Omit<DemoTask, 'id' | 'created_at'>>) => {
+        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
+        if (!supabase) return;
+        await supabase.from('tasks').update(updates).eq('id', id);
+    }, []);
+
+    const deleteTask = useCallback(async (id: string) => {
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+        if (!supabase) return;
+        await supabase.from('tasks').delete().eq('id', id);
+    }, []);
+
     // ── Grocery CRUD → Supabase ──
     const addGroceryItem = useCallback(async (item: Omit<DemoGroceryItem, 'id' | 'created_at' | 'completed_at'>) => {
         const tempId = `g${Date.now()}`;
@@ -503,7 +517,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
         <FamilyContext.Provider
             value={{
                 user: currentUser, members, getUserById, loading,
-                tasks, addTask, updateTaskStatus,
+                tasks, addTask, updateTaskStatus, updateTask, deleteTask,
                 groceryItems, addGroceryItem, toggleGroceryItem, deleteGroceryItem, updateGroceryItem,
                 expenses, addExpense, updateExpense, deleteExpense,
                 messages, sendMessage,
