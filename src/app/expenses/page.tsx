@@ -9,7 +9,7 @@ import Badge from '@/components/ui/Badge';
 import Avatar from '@/components/ui/Avatar';
 import Modal from '@/components/ui/Modal';
 import { Plus, Wallet, TrendingUp, ChevronDown, Pencil, Trash2, ShoppingCart } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isSameMonth, parseISO } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const CATEGORIES = ['Groceries', 'Utilities', 'Rent', 'Transport', 'Misc'];
@@ -25,6 +25,7 @@ export default function ExpensesPage() {
     const { expenses, addExpense, updateExpense, deleteExpense, user, getUserById } = useFamily();
     const [showModal, setShowModal] = useState(false);
     const [filterCat, setFilterCat] = useState('all');
+    const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
 
     // Add form
     const [title, setTitle] = useState('');
@@ -44,21 +45,52 @@ export default function ExpensesPage() {
     // Delete confirmation
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
+    const currentMonthExpenses = useMemo(() => {
+        return expenses.filter(e => isSameMonth(parseISO(e.date), parseISO(`${selectedMonth}-01`)));
+    }, [expenses, selectedMonth]);
+
     const monthlyTotal = useMemo(
-        () => expenses.reduce((s, e) => s + e.amount, 0),
-        [expenses],
+        () => currentMonthExpenses.reduce((s, e) => s + e.amount, 0),
+        [currentMonthExpenses],
     );
 
     const chartData = useMemo(() => {
         return CATEGORIES.map((cat) => ({
             name: cat,
-            amount: expenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0),
+            amount: currentMonthExpenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0),
         })).filter((d) => d.amount > 0);
-    }, [expenses]);
+    }, [currentMonthExpenses]);
 
     const filteredExpenses = useMemo(() => {
-        return filterCat === 'all' ? expenses : expenses.filter((e) => e.category === filterCat);
-    }, [expenses, filterCat]);
+        return filterCat === 'all' ? currentMonthExpenses : currentMonthExpenses.filter((e) => e.category === filterCat);
+    }, [currentMonthExpenses, filterCat]);
+
+    // Generate available months from March 2026 up to the current month
+    const availableMonths = useMemo(() => {
+        const months = [];
+        const current = new Date();
+        // Start date: March 1, 2026
+        const start = new Date(2026, 2, 1);
+
+        // Always ensure the current month is included if current date is before start
+        if (current < start) {
+            months.push({
+                value: format(current, 'yyyy-MM'),
+                label: format(current, 'MMMM yyyy')
+            });
+            return months;
+        }
+
+        const d = new Date(current.getFullYear(), current.getMonth(), 1);
+        while (d >= start) {
+            months.push({
+                value: format(d, 'yyyy-MM'),
+                label: format(d, 'MMMM yyyy')
+            });
+            d.setMonth(d.getMonth() - 1);
+        }
+        return months;
+    }, []);
 
     const handleAdd = () => {
         if (!title.trim() || !amount) return;
@@ -122,7 +154,7 @@ export default function ExpensesPage() {
                         <p className="text-4xl font-bold bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] bg-clip-text text-transparent">
                             ₹{monthlyTotal.toLocaleString()}
                         </p>
-                        <p className="text-xs text-[var(--color-muted)] mt-2">{expenses.length} transactions this month</p>
+                        <p className="text-xs text-[var(--color-muted)] mt-2">{currentMonthExpenses.length} transactions in {format(parseISO(`${selectedMonth}-01`), 'MMM yyyy')}</p>
                     </GlassCard>
                 </motion.div>
 
@@ -149,21 +181,39 @@ export default function ExpensesPage() {
                 </motion.div>
             </div>
 
-            {/* Filter */}
-            <div className="flex items-center gap-3 mb-5">
-                <p className="text-sm font-semibold text-[var(--color-muted)]">Filter:</p>
-                <div className="relative">
-                    <select
-                        value={filterCat}
-                        onChange={(e) => setFilterCat(e.target.value)}
-                        className={`${inputClass} appearance-none pr-8 min-w-[140px]`}
-                    >
-                        <option value="all">All Categories</option>
-                        {CATEGORIES.map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                        ))}
-                    </select>
-                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-muted)] pointer-events-none" />
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-4 mb-5">
+                <div className="flex items-center gap-3">
+                    <p className="text-sm font-semibold text-[var(--color-muted)]">Month:</p>
+                    <div className="relative">
+                        <select
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className={`${inputClass} appearance-none pr-8 min-w-[150px]`}
+                        >
+                            {availableMonths.map((m) => (
+                                <option key={m.value} value={m.value}>{m.label}</option>
+                            ))}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-muted)] pointer-events-none" />
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <p className="text-sm font-semibold text-[var(--color-muted)]">Category:</p>
+                    <div className="relative">
+                        <select
+                            value={filterCat}
+                            onChange={(e) => setFilterCat(e.target.value)}
+                            className={`${inputClass} appearance-none pr-8 min-w-[140px]`}
+                        >
+                            <option value="all">All Categories</option>
+                            {CATEGORIES.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-muted)] pointer-events-none" />
+                    </div>
                 </div>
             </div>
 
