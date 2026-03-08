@@ -87,12 +87,33 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
             })));
         }
         if (tasksRes.data) {
-            setTasks(tasksRes.data.map((t: any) => ({
-                id: t.id, title: t.title, description: t.description || '',
-                assigned_to: t.assigned_to || [], deadline: t.deadline,
-                priority: t.priority, status: t.status,
-                created_by: t.created_by, created_at: t.created_at, completed_at: t.completed_at,
-            })));
+            const now = new Date();
+            const validTasks: any[] = [];
+            const expiredTaskIds: string[] = [];
+
+            tasksRes.data.forEach((t: any) => {
+                if (t.status === 'completed' && t.completed_at) {
+                    const completedTime = new Date(t.completed_at);
+                    if ((now.getTime() - completedTime.getTime()) / (1000 * 60 * 60) > 24) {
+                        expiredTaskIds.push(t.id);
+                        return;
+                    }
+                }
+                validTasks.push({
+                    id: t.id, title: t.title, description: t.description || '',
+                    assigned_to: t.assigned_to || [], deadline: t.deadline,
+                    priority: t.priority, status: t.status,
+                    created_by: t.created_by, created_at: t.created_at, completed_at: t.completed_at,
+                });
+            });
+
+            setTasks(validTasks);
+
+            if (expiredTaskIds.length > 0 && supabase) {
+                supabase.from('tasks').delete().in('id', expiredTaskIds).then(({ error }) => {
+                    if (error) console.error("Error deleting expired tasks on load:", error);
+                });
+            }
         }
         if (groceryRes.data) {
             setGroceryItems(groceryRes.data.map((g: any) => ({
@@ -121,6 +142,38 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
             fetchAllData();
         }
     }, [isRealUser, familyId, fetchAllData]);
+
+    // Cleanup expired completed tasks (older than 24h) every minute
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTasks((prev) => {
+                const now = new Date();
+                const expiredIds: string[] = [];
+                const validTasks = prev.filter((t) => {
+                    if (t.status === 'completed' && t.completed_at) {
+                        const completedTime = new Date(t.completed_at);
+                        if ((now.getTime() - completedTime.getTime()) / (1000 * 60 * 60) > 24) {
+                            expiredIds.push(t.id);
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+
+                if (expiredIds.length > 0) {
+                    if (supabase && isRealUser && familyId) {
+                        supabase.from('tasks').delete().in('id', expiredIds).then(({ error }) => {
+                            if (error) console.error("Error deleting expired tasks during interval:", error);
+                        });
+                    }
+                    return validTasks;
+                }
+                return prev;
+            });
+        }, 60000);
+
+        return () => clearInterval(interval);
+    }, [isRealUser, familyId]);
 
     // ─── Granular Realtime Subscriptions ───
     useEffect(() => {
