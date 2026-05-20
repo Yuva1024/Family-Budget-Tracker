@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFamily } from '@/contexts/FamilyContext';
 import GlassCard from '@/components/ui/GlassCard';
