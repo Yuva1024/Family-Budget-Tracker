@@ -49,6 +49,14 @@ export default function DashboardPage() {
     (t) => t.status === 'completed' && t.completed_at && new Date(t.completed_at).toDateString() === new Date().toDateString(),
   );
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+
+  const categoryTotals = React.useMemo(() => {
+    return expenses.reduce((acc, e) => {
+      acc[e.category] = (acc[e.category] || 0) + e.amount;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [expenses]);
+
   const pendingGroceries = groceryItems.filter((g) => !g.checked);
   const urgentTasks = pendingTasks.filter(
     (t) => t.deadline && isBefore(new Date(t.deadline), addHours(new Date(), 24)),
@@ -146,7 +154,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-2">
                   {['Groceries', 'Utilities', 'Rent', 'Transport', 'Misc'].map((cat) => {
-                    const catTotal = expenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0);
+                    const catTotal = categoryTotals[cat] || 0;
                     if (catTotal === 0) return null;
                     const pct = totalExpenses > 0 ? Math.min((catTotal / totalExpenses) * 100, 100) : 0;
                     return (
