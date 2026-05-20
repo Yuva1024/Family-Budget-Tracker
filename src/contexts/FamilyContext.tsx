@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import type { Tables, TablesUpdate } from '@/lib/database.types';
 import {
     demoUsers,
     demoTasks,
@@ -82,16 +83,16 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
         ]);
 
         if (membersRes.data) {
-            setMembers(membersRes.data.map((p: any) => ({
-                id: p.id, name: p.name, avatar_url: p.avatar_url || '', role: p.role,
+            setMembers(membersRes.data.map((p: Tables<'profiles'>) => ({
+                id: p.id, name: p.name, avatar_url: p.avatar_url || '', role: (p.role as 'admin' | 'member') || 'member',
             })));
         }
         if (tasksRes.data) {
             const now = new Date();
-            const validTasks: any[] = [];
+            const validTasks: DemoTask[] = [];
             const expiredTaskIds: string[] = [];
 
-            tasksRes.data.forEach((t: any) => {
+            tasksRes.data.forEach((t: Tables<'tasks'>) => {
                 if (t.status === 'completed' && t.completed_at) {
                     const completedTime = new Date(t.completed_at);
                     if ((now.getTime() - completedTime.getTime()) / (1000 * 60 * 60) > 24) {
@@ -101,8 +102,8 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 }
                 validTasks.push({
                     id: t.id, title: t.title, description: t.description || '',
-                    assigned_to: t.assigned_to || [], deadline: t.deadline,
-                    priority: t.priority, status: t.status,
+                    assigned_to: t.assigned_to ? [t.assigned_to] : [], deadline: t.deadline || '',
+                    priority: (t.priority as DemoTask['priority']) || 'medium', status: (t.status as DemoTask['status']) || 'pending',
                     created_by: t.created_by, created_at: t.created_at, completed_at: t.completed_at,
                 });
             });
@@ -116,19 +117,19 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
             }
         }
         if (groceryRes.data) {
-            setGroceryItems(groceryRes.data.map((g: any) => ({
-                id: g.id, item_name: g.item_name, quantity: g.quantity,
-                price: Number(g.price), checked: g.checked, added_by: g.added_by, created_at: g.created_at, completed_at: g.completed_at || null,
+            setGroceryItems(groceryRes.data.map((g: Tables<'grocery_items'>) => ({
+                id: g.id, item_name: g.item_name, quantity: g.quantity || 1,
+                price: Number(g.price), checked: g.checked || false, added_by: g.added_by, created_at: g.created_at, completed_at: g.completed_at || null,
             })));
         }
         if (expensesRes.data) {
-            setExpenses(expensesRes.data.map((e: any) => ({
+            setExpenses(expensesRes.data.map((e: Tables<'expenses'>) => ({
                 id: e.id, title: e.title, amount: Number(e.amount),
                 category: e.category, paid_by: e.paid_by, date: e.date, notes: e.notes || '', grocery_item_id: e.grocery_item_id || null,
             })));
         }
         if (messagesRes.data) {
-            setMessages(messagesRes.data.map((m: any) => ({
+            setMessages(messagesRes.data.map((m: Tables<'messages'>) => ({
                 id: m.id, user_id: m.user_id, message: m.message, created_at: m.created_at,
             })));
         }
@@ -187,19 +188,19 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 event: 'INSERT', schema: 'public', table: 'profiles',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const p = payload.new as any;
+                const p = payload.new as Tables<'profiles'>;
                 setMembers((prev) => {
                     if (prev.some((m) => m.id === p.id)) return prev;
-                    return [...prev, { id: p.id, name: p.name, avatar_url: p.avatar_url || '', role: p.role }];
+                    return [...prev, { id: p.id, name: p.name, avatar_url: p.avatar_url || '', role: (p.role as 'admin' | 'member') || 'member' }];
                 });
             })
             .on('postgres_changes', {
                 event: 'UPDATE', schema: 'public', table: 'profiles',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const p = payload.new as any;
+                const p = payload.new as Tables<'profiles'>;
                 setMembers((prev) =>
-                    prev.map((m) => m.id === p.id ? { id: p.id, name: p.name, avatar_url: p.avatar_url || '', role: p.role } : m)
+                    prev.map((m) => m.id === p.id ? { id: p.id, name: p.name, avatar_url: p.avatar_url || '', role: (p.role as 'admin' | 'member') || 'member' } : m)
                 );
             })
 
@@ -208,7 +209,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 event: 'INSERT', schema: 'public', table: 'tasks',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const t = payload.new as any;
+                const t = payload.new as Tables<'tasks'>;
                 setTasks((prev) => {
                     if (prev.some((x) => x.id === t.id)) return prev;
                     const withoutTemps = prev.filter((x) => {
@@ -217,8 +218,8 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                     });
                     const newTask: DemoTask = {
                         id: t.id, title: t.title, description: t.description || '',
-                        assigned_to: t.assigned_to || [], deadline: t.deadline,
-                        priority: t.priority, status: t.status,
+                        assigned_to: t.assigned_to ? [t.assigned_to] : [], deadline: t.deadline || '',
+                        priority: (t.priority as DemoTask['priority']) || 'medium', status: (t.status as DemoTask['status']) || 'pending',
                         created_by: t.created_by, created_at: t.created_at, completed_at: t.completed_at,
                     };
                     return [newTask, ...withoutTemps];
@@ -228,12 +229,12 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 event: 'UPDATE', schema: 'public', table: 'tasks',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const t = payload.new as any;
+                const t = payload.new as Tables<'tasks'>;
                 setTasks((prev) =>
                     prev.map((x) => x.id === t.id ? {
                         id: t.id, title: t.title, description: t.description || '',
-                        assigned_to: t.assigned_to || [], deadline: t.deadline,
-                        priority: t.priority, status: t.status,
+                        assigned_to: t.assigned_to ? [t.assigned_to] : [], deadline: t.deadline || '',
+                        priority: (t.priority as DemoTask['priority']) || 'medium', status: (t.status as DemoTask['status']) || 'pending',
                         created_by: t.created_by, created_at: t.created_at, completed_at: t.completed_at,
                     } : x)
                 );
@@ -242,7 +243,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 event: 'DELETE', schema: 'public', table: 'tasks',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const old = payload.old as any;
+                const old = payload.old as { id: string };
                 setTasks((prev) => prev.filter((x) => x.id !== old.id));
             })
 
@@ -251,7 +252,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 event: 'INSERT', schema: 'public', table: 'grocery_items',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const g = payload.new as any;
+                const g = payload.new as Tables<'grocery_items'>;
                 setGroceryItems((prev) => {
                     if (prev.some((x) => x.id === g.id)) return prev;
                     const withoutTemps = prev.filter((x) => {
@@ -259,8 +260,8 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                         return true;
                     });
                     const newItem: DemoGroceryItem = {
-                        id: g.id, item_name: g.item_name, quantity: g.quantity,
-                        price: Number(g.price), checked: g.checked, added_by: g.added_by, created_at: g.created_at, completed_at: g.completed_at || null,
+                        id: g.id, item_name: g.item_name, quantity: g.quantity || 1,
+                        price: Number(g.price), checked: g.checked || false, added_by: g.added_by, created_at: g.created_at, completed_at: g.completed_at || null,
                     };
                     return [newItem, ...withoutTemps];
                 });
@@ -269,11 +270,11 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 event: 'UPDATE', schema: 'public', table: 'grocery_items',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const g = payload.new as any;
+                const g = payload.new as Tables<'grocery_items'>;
                 setGroceryItems((prev) =>
                     prev.map((x) => x.id === g.id ? {
-                        id: g.id, item_name: g.item_name, quantity: g.quantity,
-                        price: Number(g.price), checked: g.checked, added_by: g.added_by, created_at: g.created_at, completed_at: g.completed_at || null,
+                        id: g.id, item_name: g.item_name, quantity: g.quantity || 1,
+                        price: Number(g.price), checked: g.checked || false, added_by: g.added_by, created_at: g.created_at, completed_at: g.completed_at || null,
                     } : x)
                 );
             })
@@ -281,7 +282,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 event: 'DELETE', schema: 'public', table: 'grocery_items',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const old = payload.old as any;
+                const old = payload.old as { id: string };
                 setGroceryItems((prev) => prev.filter((x) => x.id !== old.id));
             })
 
@@ -290,7 +291,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 event: 'INSERT', schema: 'public', table: 'expenses',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const e = payload.new as any;
+                const e = payload.new as Tables<'expenses'>;
                 setExpenses((prev) => {
                     if (prev.some((x) => x.id === e.id)) return prev;
                     const withoutTemps = prev.filter((x) => {
@@ -308,7 +309,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 event: 'UPDATE', schema: 'public', table: 'expenses',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const e = payload.new as any;
+                const e = payload.new as Tables<'expenses'>;
                 setExpenses((prev) =>
                     prev.map((x) => x.id === e.id ? {
                         id: e.id, title: e.title, amount: Number(e.amount),
@@ -320,7 +321,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 event: 'DELETE', schema: 'public', table: 'expenses',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const old = payload.old as any;
+                const old = payload.old as { id: string };
                 setExpenses((prev) => prev.filter((x) => x.id !== old.id));
             })
 
@@ -329,7 +330,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 event: 'INSERT', schema: 'public', table: 'messages',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const m = payload.new as any;
+                const m = payload.new as Tables<'messages'>;
                 setMessages((prev) => {
                     if (prev.some((x) => x.id === m.id)) return prev;
                     const withoutTemps = prev.filter((x) => {
@@ -346,7 +347,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 event: 'DELETE', schema: 'public', table: 'messages',
                 filter: `family_id=eq.${familyId}`,
             }, (payload) => {
-                const old = payload.old as any;
+                const old = payload.old as { id: string };
                 setMessages((prev) => prev.filter((x) => x.id !== old.id));
             })
 
@@ -376,12 +377,12 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
             family_id: familyId as string,
             title: task.title,
             description: task.description,
-            assigned_to: task.assigned_to || null,
+            assigned_to: task.assigned_to?.[0] || null,
             deadline: task.deadline || null,
             priority: task.priority || 'medium',
             status: task.status || 'pending',
             created_by: task.created_by || currentUser.id
-        } as any).select().single();
+        }).select().single();
 
         if (data) {
             setTasks((prev) => prev.map((t) =>
@@ -404,7 +405,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
     const updateTask = useCallback(async (id: string, updates: Partial<Omit<DemoTask, 'id' | 'created_at'>>) => {
         setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
         if (!supabase) return;
-        await supabase.from('tasks').update(updates as any).eq('id', id);
+        await supabase.from('tasks').update(updates as TablesUpdate<'tasks'>).eq('id', id);
     }, []);
 
     const deleteTask = useCallback(async (id: string) => {
@@ -428,7 +429,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
             price: item.price,
             checked: item.checked,
             added_by: item.added_by
-        } as any).select().single();
+        }).select().single();
 
         if (data) {
             // Replace temp item with real one (real ID) so realtime handler skips it
@@ -524,7 +525,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
     const updateGroceryItem = useCallback(async (id: string, updates: Partial<Pick<DemoGroceryItem, 'item_name' | 'quantity' | 'price'>>) => {
         setGroceryItems((prev) => prev.map((g) => (g.id === id ? { ...g, ...updates } : g)));
         if (!supabase) return;
-        await supabase.from('grocery_items').update(updates as any).eq('id', id);
+        await supabase.from('grocery_items').update(updates as TablesUpdate<'grocery_items'>).eq('id', id);
     }, []);
 
     // ── Expense CRUD → Supabase ──
@@ -542,7 +543,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
             paid_by: expense.paid_by,
             date: expense.date,
             notes: expense.notes
-        } as any).select().single();
+        }).select().single();
 
         if (data) {
             setExpenses((prev) => prev.map((e) =>
@@ -554,7 +555,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
     const updateExpense = useCallback(async (id: string, updates: Partial<Pick<DemoExpense, 'title' | 'amount' | 'category' | 'date' | 'notes'>>) => {
         setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, ...updates } : e)));
         if (!supabase) return;
-        await supabase.from('expenses').update(updates as any).eq('id', id);
+        await supabase.from('expenses').update(updates as TablesUpdate<'expenses'>).eq('id', id);
     }, []);
 
     const deleteExpense = useCallback(async (id: string) => {
@@ -574,7 +575,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
             family_id: familyId as string,
             user_id: currentUser.id,
             message: text
-        } as any).select().single();
+        }).select().single();
 
         if (data) {
             setMessages((prev) => prev.map((m) =>
