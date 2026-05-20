@@ -171,7 +171,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const createFamily = useCallback(async (familyName: string) => {
         if (!supabase || !user) return { error: 'Not authenticated' };
-        const code = `FF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const array = new Uint8Array(6);
+        crypto.getRandomValues(array);
+        const randomStr = Array.from(array).map(x => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'[x % 36]).join('');
+        const code = `FF-${randomStr}`;
         const { data, error } = await supabase.from('families').insert({ name: familyName, invite_code: code }).select().single();
         if (error) return { error: error.message };
         const { error: updateErr } = await supabase.from('profiles').update({ family_id: data.id, role: 'admin' }).eq('id', user.id);
