@@ -9,6 +9,7 @@ import {
     ShoppingCart,
     Wallet,
     MessageCircle,
+    TrendingUp,
 } from 'lucide-react';
 
 const tabs = [
@@ -16,6 +17,7 @@ const tabs = [
     { href: '/tasks', label: 'Tasks', icon: ListTodo },
     { href: '/groceries', label: 'Grocery', icon: ShoppingCart },
     { href: '/expenses', label: 'Spend', icon: Wallet },
+    { href: '/investments', label: 'Invest', icon: TrendingUp },
 ];
 
 export default function BottomNav() {

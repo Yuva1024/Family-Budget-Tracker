@@ -52,7 +52,7 @@ const FamilyContext = createContext<FamilyContextValue | null>(null);
 export function FamilyProvider({ children }: { children: ReactNode }) {
     const { profile } = useAuth();
     const isRealUser = isSupabaseConfigured && !!profile;
-    const familyId = profile?.family_id;
+    const familyId = Array.isArray(profile?.family_id) ? profile?.family_id[0] : (profile?.family_id as string);
 
     const currentUser: DemoUser = profile
         ? { id: profile.id, name: profile.name, avatar_url: profile.avatar_url || '', role: profile.role }
@@ -373,10 +373,15 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
         if (!supabase || !familyId) return;
 
         const { data } = await supabase.from('tasks').insert({
-            family_id: familyId, title: task.title, description: task.description,
-            assigned_to: task.assigned_to, deadline: task.deadline,
-            priority: task.priority, status: task.status, created_by: task.created_by,
-        }).select().single();
+            family_id: familyId as string,
+            title: task.title,
+            description: task.description,
+            assigned_to: task.assigned_to || null,
+            deadline: task.deadline || null,
+            priority: task.priority || 'medium',
+            status: task.status || 'pending',
+            created_by: task.created_by || currentUser.id
+        } as any).select().single();
 
         if (data) {
             setTasks((prev) => prev.map((t) =>
@@ -399,7 +404,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
     const updateTask = useCallback(async (id: string, updates: Partial<Omit<DemoTask, 'id' | 'created_at'>>) => {
         setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
         if (!supabase) return;
-        await supabase.from('tasks').update(updates).eq('id', id);
+        await supabase.from('tasks').update(updates as any).eq('id', id);
     }, []);
 
     const deleteTask = useCallback(async (id: string) => {
@@ -417,9 +422,13 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
         if (!supabase || !familyId) return;
 
         const { data } = await supabase.from('grocery_items').insert({
-            family_id: familyId, item_name: item.item_name,
-            quantity: item.quantity, price: item.price, checked: item.checked, added_by: item.added_by,
-        }).select().single();
+            family_id: familyId as string,
+            item_name: item.item_name,
+            quantity: item.quantity,
+            price: item.price,
+            checked: item.checked,
+            added_by: item.added_by
+        } as any).select().single();
 
         if (data) {
             // Replace temp item with real one (real ID) so realtime handler skips it
@@ -468,7 +477,8 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
                 const [gRes, expRes] = await Promise.all([
                     supabase.from('grocery_items').update({ checked: true, completed_at: completedAt }).eq('id', id),
                     supabase.from('expenses').insert({
-                        family_id: familyId, title: expense.title, amount: expense.amount,
+            // @ts-ignore
+                        family_id: Array.isArray(familyId) ? familyId[0] : (familyId as string), title: expense.title, amount: expense.amount,
                         category: expense.category, paid_by: expense.paid_by, date: expense.date,
                         notes: expense.notes, grocery_item_id: id,
                     }).select().single(),
@@ -514,7 +524,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
     const updateGroceryItem = useCallback(async (id: string, updates: Partial<Pick<DemoGroceryItem, 'item_name' | 'quantity' | 'price'>>) => {
         setGroceryItems((prev) => prev.map((g) => (g.id === id ? { ...g, ...updates } : g)));
         if (!supabase) return;
-        await supabase.from('grocery_items').update(updates).eq('id', id);
+        await supabase.from('grocery_items').update(updates as any).eq('id', id);
     }, []);
 
     // ── Expense CRUD → Supabase ──
@@ -525,9 +535,14 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
         if (!supabase || !familyId) return;
 
         const { data } = await supabase.from('expenses').insert({
-            family_id: familyId, title: expense.title, amount: expense.amount,
-            category: expense.category, paid_by: expense.paid_by, date: expense.date, notes: expense.notes,
-        }).select().single();
+            family_id: familyId as string,
+            title: expense.title,
+            amount: expense.amount,
+            category: expense.category,
+            paid_by: expense.paid_by,
+            date: expense.date,
+            notes: expense.notes
+        } as any).select().single();
 
         if (data) {
             setExpenses((prev) => prev.map((e) =>
@@ -539,7 +554,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
     const updateExpense = useCallback(async (id: string, updates: Partial<Pick<DemoExpense, 'title' | 'amount' | 'category' | 'date' | 'notes'>>) => {
         setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, ...updates } : e)));
         if (!supabase) return;
-        await supabase.from('expenses').update(updates).eq('id', id);
+        await supabase.from('expenses').update(updates as any).eq('id', id);
     }, []);
 
     const deleteExpense = useCallback(async (id: string) => {
@@ -556,8 +571,10 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
         if (!supabase || !familyId) return;
 
         const { data } = await supabase.from('messages').insert({
-            family_id: familyId, user_id: currentUser.id, message: text,
-        }).select().single();
+            family_id: familyId as string,
+            user_id: currentUser.id,
+            message: text
+        } as any).select().single();
 
         if (data) {
             setMessages((prev) => prev.map((m) =>
