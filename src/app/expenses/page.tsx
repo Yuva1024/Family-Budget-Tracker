@@ -55,9 +55,13 @@ export default function ExpensesPage() {
     );
 
     const chartData = useMemo(() => {
+        const categoryTotals = currentMonthExpenses.reduce((acc, e) => {
+            acc[e.category] = (acc[e.category] || 0) + e.amount;
+            return acc;
+        }, {} as Record<string, number>);
         return CATEGORIES.map((cat) => ({
             name: cat,
-            amount: currentMonthExpenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0),
+            amount: categoryTotals[cat] || 0,
         })).filter((d) => d.amount > 0);
     }, [currentMonthExpenses]);
 
