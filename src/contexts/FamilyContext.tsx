@@ -355,13 +355,21 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
         return () => { if (supabase) supabase.removeChannel(channel); };
     }, [familyId]);
 
+    const membersMap = React.useMemo(() => {
+        const map = new Map<string, DemoUser>();
+        for (const m of members) {
+            map.set(m.id, m);
+        }
+        return map;
+    }, [members]);
+
     const getUserById = useCallback(
         (id: string): DemoUser | undefined => {
-            const found = members.find((m) => m.id === id);
+            const found = membersMap.get(id);
             if (found) return found;
             return isRealUser ? undefined : getDemoUser(id);
         },
-        [members, isRealUser],
+        [membersMap, isRealUser],
     );
 
     // ── Task CRUD → Supabase ──
