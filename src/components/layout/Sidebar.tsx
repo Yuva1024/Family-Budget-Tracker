@@ -12,16 +12,21 @@ import {
     Users,
     Settings,
     LogOut,
+    TrendingUp,
+    Sun,
+    Moon,
 } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import { useFamily } from '@/contexts/FamilyContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from 'next-themes';
 
 const links = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/tasks', label: 'Tasks', icon: ListTodo },
     { href: '/groceries', label: 'Groceries', icon: ShoppingCart },
     { href: '/expenses', label: 'Expenses', icon: Wallet },
+    { href: '/investments', label: 'Investments', icon: TrendingUp },
     { href: '/members', label: 'Members', icon: Users },
 ];
 
@@ -29,6 +34,7 @@ export default function Sidebar() {
     const pathname = usePathname();
     const { user } = useFamily();
     const { signOut } = useAuth();
+    const { theme, setTheme } = useTheme();
 
     return (
         <aside className="hidden lg:flex flex-col w-[240px] h-screen sticky top-0 bg-[var(--color-surface)] border-r border-[var(--color-border)] p-4">
@@ -71,6 +77,13 @@ export default function Sidebar() {
                     <p className="text-xs text-[var(--color-muted)] capitalize">{user.role}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
+                    <button
+                        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                        className="text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-colors p-1"
+                        title="Toggle Theme"
+                    >
+                        {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+                    </button>
                     <Link href="/settings" className="text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-colors p-1">
                         <Settings size={15} />
                     </Link>

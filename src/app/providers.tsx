@@ -1,5 +1,8 @@
 'use client';
 
+import { InvestmentProvider } from '@/contexts/InvestmentContext';
+import { ThemeProvider } from 'next-themes';
+
 import React, { ReactNode } from 'react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { FamilyProvider } from '@/contexts/FamilyContext';
@@ -40,7 +43,9 @@ function AuthGate({ children }: { children: ReactNode }) {
     // Authenticated and in a family → show the app
     return (
         <FamilyProvider>
-            <AppShell>{children}</AppShell>
+            <InvestmentProvider>
+                <AppShell>{children}</AppShell>
+            </InvestmentProvider>
         </FamilyProvider>
     );
 }
@@ -48,8 +53,10 @@ function AuthGate({ children }: { children: ReactNode }) {
 /** Client-side providers */
 export default function ClientProviders({ children }: { children: ReactNode }) {
     return (
-        <AuthProvider>
-            <AuthGate>{children}</AuthGate>
-        </AuthProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <AuthProvider>
+                <AuthGate>{children}</AuthGate>
+            </AuthProvider>
+        </ThemeProvider>
     );
 }

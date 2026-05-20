@@ -119,7 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(s?.user ?? null);
 
             if (s?.user) {
-                if (event === 'SIGNED_IN') {
+                // Only set loading if we don't already have a profile for this user
+                // This prevents the loading screen from flashing on tab switch / token refresh
+                if (event === 'SIGNED_IN' && !profile) {
                     setProfileLoading(true);
                 }
                 const p = await fetchProfile(s.user.id);

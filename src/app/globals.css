@@ -2,16 +2,8 @@
 
 /* ===== FamilyFlow Design System (Tailwind v4) ===== */
 
+
 @theme inline {
-  /* ── Colour tokens ── */
-  --color-background: #0f1117;
-  --color-surface: #181a24;
-  --color-card: #1e2030;
-  --color-card-hover: #252840;
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-border-active: rgba(255, 255, 255, 0.12);
-  --color-foreground: #e8e9ed;
-  --color-muted: #8b8d97;
   --color-accent-cyan: #22d3ee;
   --color-accent-violet: #8b5cf6;
   --color-accent-blue: #3b82f6;
@@ -19,14 +11,10 @@
   --color-accent-yellow: #fbbf24;
   --color-accent-red: #f87171;
   --color-accent-orange: #fb923c;
-  --color-glass: rgba(30, 32, 48, 0.65);
-  --color-glass-strong: rgba(30, 32, 48, 0.85);
 
-  /* ── Typography ── */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-heading: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  /* ── Spacing / Radius ── */
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
@@ -34,17 +22,45 @@
   --radius-2xl: 1.5rem;
   --radius-pill: 9999px;
 
-  /* ── Shadows ── */
-  --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.25);
+  --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.1);
   --shadow-glow-cyan: 0 0 20px rgba(34, 211, 238, 0.15);
   --shadow-glow-violet: 0 0 20px rgba(139, 92, 246, 0.15);
 
-  /* ── Animations ── */
   --animate-fade-in: fade-in 0.4s ease-out forwards;
   --animate-slide-up: slide-up 0.45s ease-out forwards;
   --animate-slide-in-right: slide-in-right 0.35s ease-out forwards;
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
 }
+
+@layer base {
+  :root {
+    --color-background: #f8fafc;
+    --color-surface: #ffffff;
+    --color-card: #ffffff;
+    --color-card-hover: #f1f5f9;
+    --color-border: rgba(0, 0, 0, 0.1);
+    --color-border-active: rgba(0, 0, 0, 0.2);
+    --color-foreground: #0f172a;
+    --color-muted: #64748b;
+    --color-glass: rgba(255, 255, 255, 0.65);
+    --color-glass-strong: rgba(255, 255, 255, 0.85);
+  }
+
+  .dark {
+    --color-background: #0f1117;
+    --color-surface: #181a24;
+    --color-card: #1e2030;
+    --color-card-hover: #252840;
+    --color-border: rgba(255, 255, 255, 0.06);
+    --color-border-active: rgba(255, 255, 255, 0.12);
+    --color-foreground: #e8e9ed;
+    --color-muted: #8b8d97;
+    --color-glass: rgba(30, 32, 48, 0.65);
+    --color-glass-strong: rgba(30, 32, 48, 0.85);
+    --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.25);
+  }
+}
+
 
 /* ── Keyframes ── */
 @keyframes fade-in {

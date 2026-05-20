@@ -10,8 +10,23 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'FamilyFlow — Family Task & Budget Manager',
-  description: 'Manage tasks, groceries, expenses, and communication for your family in one place.',
+  title: 'FamilyFlow — Ultimate Family Task, Budget & Investment Manager',
+  description: 'Manage tasks, groceries, expenses, track investments (FDs, RDs, SIPs), and family communication in one beautifully designed dashboard.',
+  keywords: 'family manager, task manager, budget tracker, investment tracker, family dashboard, family app, FD tracker, SIP tracker',
+  authors: [{ name: 'FamilyFlow' }],
+  openGraph: {
+    title: 'FamilyFlow — Family Task & Investment Manager',
+    description: 'Track your family tasks, budget, and investments in real-time.',
+    url: 'https://familyflow.vercel.app',
+    siteName: 'FamilyFlow',
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'FamilyFlow — Family Task & Investment Manager',
+    description: 'Track your family tasks, budget, and investments in real-time.',
+  },
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'FamilyFlow' },
 };
@@ -28,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`}>
         <ClientProviders>{children}</ClientProviders>
       </body>
